@@ -41,6 +41,9 @@ CLIENT_CSR := $(CERTS_DIR)/client.csr
 CLIENT_KEY := $(CERTS_DIR)/client.key
 CLIENT_CERT := $(CERTS_DIR)/client.cert
 
+# Allows to mount custom CA certificate key that is required for installation.
+CUSTOM_CA_KEY_PATH :=
+
 # Variables for the ssh keys that will be generated for installing DC/OS in the
 # containers.
 SSH_DIR := $(CURDIR)/include/ssh
@@ -66,6 +69,12 @@ CERT_MOUNTS := \
 	-v $(CERTS_DIR):/etc/docker/certs.d
 HOME_MOUNTS := \
 	-v $(HOME):$(HOME):ro
+ifneq ($(CUSTOM_CA_KEY_PATH),)
+CUSTOM_CA_MOUNTS := \
+	-v $(CUSTOM_CA_KEY_PATH):/etc/custom_ca.key
+else
+CUSTOM_CA_MOUNTS :=
+endif
 # if this session isn't interactive, then we don't want to allocate a
 # TTY, which would fail, but if it is interactive, we do want to attach
 # so that the user can send e.g. ^C through.
@@ -119,7 +128,7 @@ postflight: ## Polls DC/OS until it is healthy (5m timeout)
 	@docker exec $(INTERACTIVE) $(MASTER_CTR)1 dcos-postflight
 
 master: ## Starts the containers for DC/OS masters.
-	$(foreach NUM,$(shell seq 1 $(MASTERS)),$(call start_dcos_container,$(MASTER_CTR),$(NUM),$(MASTER_MOUNTS) $(TMPFS_MOUNTS) $(CERT_MOUNTS) $(HOME_MOUNTS) $(VOLUME_MOUNTS)))
+	$(foreach NUM,$(shell seq 1 $(MASTERS)),$(call start_dcos_container,$(MASTER_CTR),$(NUM),$(MASTER_MOUNTS) $(TMPFS_MOUNTS) $(CERT_MOUNTS) $(HOME_MOUNTS) $(VOLUME_MOUNTS) $(CUSTOM_CA_MOUNTS)))
 
 $(MESOS_SLICE):
 	@echo -e '[Unit]\nDescription=Mesos Executors Slice' | sudo tee -a $@
